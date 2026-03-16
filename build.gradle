@@ -161,7 +161,7 @@ dependencies {
 	implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310'
 
 	// OpenAPI / Swagger
-	implementation 'org.springdoc:springdoc-openapi-starter-webflux-ui:2.5.0'
+	implementation 'org.springdoc:springdoc-openapi-starter-webflux-ui:2.7.0'
 
 	// Lombok | Reducir boilerplate code
 	compileOnly 'org.projectlombok:lombok'
@@ -176,6 +176,8 @@ dependencies {
 	// Database | Base de datos en memoria H2 con driver reactivo R2DBC.
 	runtimeOnly 'com.h2database:h2'
 	runtimeOnly 'io.r2dbc:r2dbc-h2'
+	// Habilitacion de H2 Console.
+	// implementation 'org.springframework.boot:spring-boot-starter-web'
 
 	// Testing
 	// Launcher de JUnit Platform
