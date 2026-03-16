@@ -1,0 +1,203 @@
+/*
+|--------------------------------------------------------------------------
+| Gradle Build Configuration
+|--------------------------------------------------------------------------
+| Proyecto: Scotiabank Reactive Challenge
+| Stack:
+| - Java 17
+| - Spring Boot WebFlux
+| - R2DBC + H2
+| - MapStruct + Lombok
+| - Testing Reactivo
+| - Calidad de código: JaCoCo, SonarQube, SpotBugs
+|--------------------------------------------------------------------------
+*/
+
+plugins {
+	id 'java'
+	id 'org.springframework.boot' version '3.4.1'
+	id 'io.spring.dependency-management' version '1.1.7'
+	// Code coverage
+	id 'jacoco'
+	// Code quality analysis
+	id "org.sonarqube" version "4.4.1.3373"
+	// Static bug detection
+	id "com.github.spotbugs" version "6.0.7"
+}
+
+group = 'com.scotiabank.challenge'
+version = '0.0.1-SNAPSHOT'
+
+/*
+|--------------------------------------------------------------------------
+| Java configuration
+|--------------------------------------------------------------------------
+| Se utiliza Java 17 mediante toolchain para garantizar consistencia
+| entre entornos de desarrollo y CI/CD.
+|--------------------------------------------------------------------------
+*/
+
+java {
+	toolchain {
+		languageVersion = JavaLanguageVersion.of(17)
+	}
+}
+
+/*
+|--------------------------------------------------------------------------
+| Configurations
+|--------------------------------------------------------------------------
+| Permite que Lombok funcione correctamente durante la compilación
+| extendiendo annotationProcessor hacia compileOnly.
+|--------------------------------------------------------------------------
+*/
+
+configurations {
+	compileOnly {
+		extendsFrom annotationProcessor
+	}
+}
+
+/*
+|--------------------------------------------------------------------------
+| Repositories
+|--------------------------------------------------------------------------
+*/
+
+repositories {
+	mavenCentral()
+}
+
+/*
+|--------------------------------------------------------------------------
+| JaCoCo configuration
+| JaCoCo Reports
+|--------------------------------------------------------------------------
+| Herramienta de cobertura de código.
+| Se exige mínimo 80% de cobertura.
+| Genera reportes HTML y XML.
+| El XML es consumido por SonarQube.
+|--------------------------------------------------------------------------
+*/
+
+jacoco {
+	toolVersion = "0.8.10"
+}
+
+jacocoTestCoverageVerification {
+	violationRules {
+		rule {
+			limit {
+				minimum = 0.00
+			}
+		}
+	}
+}
+
+jacocoTestReport {
+	dependsOn test
+	reports {
+		xml.required = true
+		html.required = true
+	}
+}
+
+/*
+|--------------------------------------------------------------------------
+| SonarQube configuration
+|--------------------------------------------------------------------------
+| Integración para análisis de calidad.
+| Consume el reporte de JaCoCo.
+|--------------------------------------------------------------------------
+*/
+
+sonarqube {
+	properties {
+		property "sonar.projectKey", "bank-test"
+		property "sonar.host.url", "http://localhost:9000"
+		property "sonar.coverage.jacoco.xmlReportPaths",
+				"$buildDir/reports/jacoco/test/jacocoTestReport.xml"
+	}
+}
+
+/*
+|--------------------------------------------------------------------------
+| SpotBugs configuration | Detecta bugs potenciales y problemas de seguridad en el bytecode.
+|--------------------------------------------------------------------------
+*/
+
+spotbugs {
+	toolVersion = '4.8.3'
+}
+
+tasks.withType(com.github.spotbugs.snom.SpotBugsTask).configureEach {
+	reports {
+		html.required = true
+	}
+}
+
+/*
+|--------------------------------------------------------------------------
+| Dependencies
+|--------------------------------------------------------------------------
+| Stack Reactivo completo:
+| - WebFlux
+| - R2DBC
+| - H2
+| - MapStruct
+| - Lombok
+| - Testing reactivo
+|--------------------------------------------------------------------------
+*/
+
+dependencies {
+	// Spring Reactive Stack
+	implementation 'org.springframework.boot:spring-boot-starter-data-r2dbc'
+	implementation 'org.springframework.boot:spring-boot-starter-validation'
+	implementation 'org.springframework.boot:spring-boot-starter-webflux'
+
+	// JSON serialization | Soporte para LocalDate, LocalDateTime, etc.
+	implementation 'com.fasterxml.jackson.module:jackson-module-parameter-names'
+	implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310'
+
+	// OpenAPI / Swagger
+	implementation 'org.springdoc:springdoc-openapi-starter-webflux-ui:2.5.0'
+
+	// Lombok | Reducir boilerplate code
+	compileOnly 'org.projectlombok:lombok'
+	annotationProcessor 'org.projectlombok:lombok'
+
+	// MapStruct | Mapeo entre DTOs y entidades
+	implementation 'org.mapstruct:mapstruct:1.5.5.Final'
+	annotationProcessor 'org.mapstruct:mapstruct-processor:1.5.5.Final'
+	// Integración Lombok + MapStruct
+	annotationProcessor 'org.projectlombok:lombok-mapstruct-binding:0.2.0'
+
+	// Database | Base de datos en memoria H2 con driver reactivo R2DBC.
+	runtimeOnly 'com.h2database:h2'
+	runtimeOnly 'io.r2dbc:r2dbc-h2'
+
+	// Testing
+	// Launcher de JUnit Platform
+	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+	// Testing de flujos reactivos
+	testImplementation 'io.projectreactor:reactor-test'
+	// Soporte completo para pruebas Spring
+	testImplementation 'org.springframework.boot:spring-boot-starter-test'
+}
+
+/*
+|--------------------------------------------------------------------------
+| Testing configuration | Habilita JUnit 5.
+|--------------------------------------------------------------------------
+*/
+tasks.named('test') {
+	useJUnitPlatform()
+}
+
+/*
+|--------------------------------------------------------------------------
+| Quality Gates | Asegura que el build falle si la cobertura baja del 80%.
+|--------------------------------------------------------------------------
+*/
+check.dependsOn jacocoTestCoverageVerification
