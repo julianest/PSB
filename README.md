@@ -1,89 +1,369 @@
 # Student Service
 
-## Identificacion inicial del proyecto
+## Proyecto = Scotiabank Reactive Challenge
 
-Proyecto backend reactivo construido con Spring Boot para el reto **Scotiabank Reactive Challenge**.
+Microservicio backend reactivo para el reto Scotiabank Reactive Challenge.
 
-- Nombre de proyecto Gradle: `student-service`
-- Group: `com.scotiabank.challenge`
-- Version: `0.0.1-SNAPSHOT`
-- Clase principal: `student_service.Application`
-- Lenguaje: Java 17 (toolchain)
+- Proyecto Gradle: student-service
+- Group: com.scotiabank.challenge
+- Version: 0.0.1-SNAPSHOT
+- Clase principal: student_service.Application
+- Java: 17 (toolchain)
+- Estilo: Spring WebFlux + R2DBC (sin bloqueo)
 
-## Stack tecnologico
+## Stack tecnológico
 
 - Java 17
 - Spring Boot 3.4.1
 - Spring WebFlux
 - Spring Data R2DBC
-- Base de datos H2 (en memoria) con driver R2DBC
-- Validacion con `spring-boot-starter-validation`
-- OpenAPI/Swagger (`springdoc-openapi-starter-webflux-ui`)
+- H2 en memoria (R2DBC + JDBC para consola)
+- Bean Validation
+- OpenAPI/Swagger con springdoc-openapi-starter-webflux-ui 2.7.0
 - MapStruct + Lombok
 
-## Build y dependencias (desde build.gradle)
+## Arquitectura implementada
 
-### Plugins
+Se mantiene una arquitectura limpia pragmatica por capas:
 
-- `java`
-- `org.springframework.boot` `3.4.1`
-- `io.spring.dependency-management` `1.1.7`
-- `jacoco`
-- `org.sonarqube` `4.4.1.3373`
-- `com.github.spotbugs` `6.0.7`
+- domain: modelo, puertos y excepciones de negocio.
+- application: casos de uso reactivos.
+- infraestructure: adapters de entrada/salida, persistencia, handlers y filtros.
 
-### Dependencias clave
+Implementacion actual de la HU-001:
 
-- API reactiva: `spring-boot-starter-webflux`
-- Persistencia reactiva: `spring-boot-starter-data-r2dbc`
-- Base de datos: `com.h2database:h2`, `io.r2dbc:r2dbc-h2`
-- Serializacion JSON de fechas: `jackson-datatype-jsr310`
-- Documentacion API: `org.springdoc:springdoc-openapi-starter-webflux-ui:2.5.0`
-- Mapeo DTO/entidad: `org.mapstruct:mapstruct:1.5.5.Final`
-- Boilerplate reduction: `org.projectlombok:lombok`
-- Testing: `spring-boot-starter-test`, `reactor-test`, `junit-platform-launcher`
+- Crear alumno: validacion de datos + validacion de id duplicado.
+- Listar alumnos activos: filtrado por estado ACTIVE.
+- Manejo de errores centralizado con GlobalExceptionHandler.
+- Logging canonico de request/response con filtros reactivos.
+
+## API HTTP
+
+Base path: /v1/api/students
+
+- POST /v1/api/students
+  - Crea un alumno.
+  - Respuestas esperadas: 201, 400, 409.
+
+- GET /v1/api/students/active
+  - Lista alumnos con estado ACTIVE.
+  - Respuesta esperada: 200.
+
+### Resumen de endpoints
+
+| Metodo | Endpoint | Descripcion | Respuestas |
+| --- | --- | --- | --- |
+| POST | /v1/api/students | Crea alumno con validaciones y control de id duplicado | 201, 400, 409 |
+| GET | /v1/api/students/active | Lista alumnos activos | 200 |
+
+## Persistencia y configuracion
+
+- Base en memoria: studentdb.
+- Script de esquema: src/main/resources/schema.sql.
+- Inicializacion de esquema activa por spring.sql.init.mode=always.
+- H2 Console solo en modo demo (ver nota en seccion de herramientas).
 
 ## Calidad, cobertura y analisis estatico
 
-- **JaCoCo** habilitado (`0.8.10`) para reportes XML y HTML.
-- **SonarQube** configurado con:
-  - `sonar.projectKey=bank-test`
-  - `sonar.host.url=http://localhost:9000`
-  - Reporte de cobertura en `build/reports/jacoco/test/jacocoTestReport.xml`
-- **SpotBugs** habilitado con reportes HTML.
+- JaCoCo 0.8.11 con reporte XML/HTML.
+- Regla de cobertura minima global: 80% (jacocoTestCoverageVerification).
+- Exclusion de paquetes tecnicos para metrica de cobertura (config, dto, entity, mapper, Application).
+- SonarQube plugin configurado para SonarCloud:
+  - sonar.projectKey=bank-test
+  - sonar.host.url=https://sonarcloud.io
+  - Ejecucion condicionada a SONAR_TOKEN.
+- SpotBugs activo con filtro en config/spotbugs-exclude.xml.
 
-## Estructura principal del codigo
+## Pruebas
 
-- `src/main/java/student_service/Application.java`
-- `src/main/java/student_service/config/OpenApiConfig.java`
-- `src/main/resources/application.properties` (actualmente vacio)
-- `src/test/java/student_service/ApplicationTests.java`
+Cobertura de pruebas por capas presente:
+
+- Controller: contrato HTTP, validaciones y errores.
+- Use cases: reglas de negocio para creacion y consulta de activos.
+- Repository/adapter: persistencia reactiva, mapeo y filtro por estado.
+- Filtro de salida: cobertura de ramas writeAndFlushWith y setComplete.
+
+Estado verificado en esta revision:
+
+- 34 pruebas ejecutadas en reporte Gradle :test.
+- 0 fallos.
+- 0 omitidas.
+- 100% exitosas.
+
+Corte de metricas mostrado en este README:
+
+- Fuente: build/reports/tests/test/index.html
+- Generado por: Gradle 9.3.1
+- Fecha/hora del reporte: 16/03/2026 9:23:23 p. m.
 
 ## Comandos utiles
 
 ```bash
-# Ejecutar pruebas
+# Windows
+gradlew.bat test
+gradlew.bat jacocoTestReport
+gradlew.bat check
+gradlew.bat spotbugsMain spotbugsTest
+
+# Linux/macOS
 ./gradlew test
-
-# Generar reporte de cobertura
 ./gradlew jacocoTestReport
-
-# Verificar calidad (incluye cobertura configurada)
 ./gradlew check
-
-# Ejecutar SpotBugs
 ./gradlew spotbugsMain spotbugsTest
 ```
 
-En Windows PowerShell o CMD, usar `gradlew.bat` en lugar de `./gradlew`.
+## Enlaces de reportes y herramientas
 
-## Hallazgos iniciales de la revision
+### Reportes locales generados
 
-1. El comentario del build indica una cobertura minima esperada de 80%, pero la regla real de JaCoCo esta en `0.00`.
-2. SonarQube apunta a `localhost:9000`, adecuado para entorno local, pero requiere ajuste para CI/CD compartido.
-3. El archivo `application.properties` principal esta vacio; aun no hay configuracion de runtime declarada.
-4. `HELP.md` sugiere que el paquete original `student-service` se normalizo a `student_service`, lo cual ya esta aplicado en codigo.
+- Gradle test report: [build/reports/tests/test/index.html](build/reports/tests/test/index.html)
+- JaCoCo HTML: [build/reports/jacoco/test/html/index.html](build/reports/jacoco/test/html/index.html)
+- JaCoCo XML: [build/reports/jacoco/test/jacocoTestReport.xml](build/reports/jacoco/test/jacocoTestReport.xml)
+- SpotBugs main: [build/reports/spotbugs/main.html](build/reports/spotbugs/main.html)
+- SpotBugs test: [build/reports/spotbugs/test.html](build/reports/spotbugs/test.html)
 
-## Estado de identificacion
+### Consolas y documentacion runtime
 
-Este README deja una base de **identificacion tecnica inicial** del servicio para onboarding, auditoria y siguientes iteraciones (dominio, endpoints, persistencia y pruebas funcionales).
+- Swagger UI: [http://localhost:8080/swagger-ui.html](http://localhost:8080/swagger-ui.html)
+- OpenAPI JSON: [http://localhost:8080/v3/api-docs](http://localhost:8080/v3/api-docs)
+- H2 Console: [http://localhost:8080/h2-console](http://localhost:8080/h2-console)
+
+### Nota importante para H2 Console
+
+Para exponer la consola H2 en este proyecto, se debe descomentar en [build.gradle](build.gradle) la linea:
+
+implementation 'org.springframework.boot:spring-boot-starter-web'
+
+Esta dependencia se mantiene comentada porque levanta Tomcat (stack bloqueante), lo cual rompe la consistencia de una arquitectura 100% reactiva con WebFlux.
+
+## Cuadro resumen de reportes
+
+| Fuente | Ruta/URL | Resultado resumido |
+| --- | --- | --- |
+| Gradle Test Report | [build/reports/tests/test/index.html](build/reports/tests/test/index.html) | 26 tests, 0 failures, 0 skipped, success rate 100%, duration 31.494s |
+| JaCoCo Report | [build/reports/jacoco/test/jacocoTestReport.xml](build/reports/jacoco/test/jacocoTestReport.xml) | Lineas: 167/173 = 96.53%. Instrucciones: 691/715 = 96.64%. Branches: 18/26 = 69.23% |
+| SpotBugs Main | [build/reports/spotbugs/main.html](build/reports/spotbugs/main.html) | 632 lineas analizadas, 38 clases, 13 paquetes, 0 warnings |
+| Swagger/OpenAPI | [http://localhost:8080/swagger-ui.html](http://localhost:8080/swagger-ui.html) | UI disponible en runtime para probar contratos y esquemas |
+| H2 Console | [http://localhost:8080/h2-console](http://localhost:8080/h2-console) | Requiere descomentar spring-boot-starter-web para habilitar acceso web |
+
+## Matriz de trazabilidad del challenge
+
+| Criterio del reto | Implementacion en el proyecto | Evidencia |
+| --- | --- | --- |
+| Crear alumno de forma reactiva | Endpoint POST con WebFlux y caso de uso CreateStudentUseCase | API HTTP + pruebas de controller/use case |
+| Rechazar id duplicado | Validacion existsById + error funcional 409 | GlobalExceptionHandler + pruebas de conflicto |
+| Listar alumnos activos | Endpoint GET que filtra por estado ACTIVE | GetActiveStudentsUseCase + pruebas |
+| Persistencia en memoria | H2 + R2DBC + schema.sql | Configuracion + pruebas de repositorio |
+| Pruebas por capa | Tests de controller, use case, repository/adapter y filtro | build/reports/tests/test/index.html |
+| Calidad tecnica | JaCoCo, SpotBugs y gate de cobertura | Reportes en build/reports |
+
+## Coleccion Postman
+
+- Coleccion: [src/main/resources/P-SB.postman_collection.json](src/main/resources/P-SB.postman_collection.json)
+
+## Mapa de carpetas
+
+```text
+student-service/
+|- build.gradle
+|- README.md
+|- docs/
+|  \- HU-001-gestion-alumnos-reactivo.md
+|- src/
+|  |- main/
+|  |  |- java/student_service/
+|  |  |  |- application/usecase/
+|  |  |  |- config/
+|  |  |  |- domain/
+|  |  |  \- infraestructure/adapter/
+|  |  \- resources/
+|  |     |- application.properties
+|  |     |- schema.sql
+|  |     \- P-SB.postman_collection.json
+|  \- test/java/student_service/
+|     |- application/usecase/
+|     \- infraestructure/adapter/
+\- config/
+   \- spotbugs-exclude.xml
+```
+
+## Modelo entidad-relacion
+
+```mermaid
+erDiagram
+  STUDENTS {
+    BIGINT id PK
+    VARCHAR name
+    VARCHAR last_name
+    VARCHAR state
+    INT age
+  }
+```
+
+![Modelo Entidad Relacion](src/main/resources/Modelo%20Entidad%20Relacion%20%28MER%29.png)
+
+## Modelo de flujo
+
+```mermaid
+flowchart LR
+  A[Cliente API] --> B[StudentController]
+  B --> C[CreateStudentUseCase]
+  B --> D[GetActiveStudentsUseCase]
+  C --> E[StudentRepository puerto]
+  D --> E
+  E --> F[StudentRepositoryAdapter]
+  F --> G[StudentR2dbcRepository]
+  G --> H[(H2 en memoria)]
+  B --> I[GlobalExceptionHandler]
+  A --> J[RequestLoggingFilter]
+  B --> K[ResponseLoggingFilter]
+```
+
+![Diagrama de Flujo](src/main/resources/Diagrama%20de%20Flujo.png)
+
+## Filtros de auditoria y verificacion
+
+Funcionalidad implementada:
+
+- RequestLoggingFilter:
+  - Lee el header Idempotency-Key.
+  - Si no llega, genera un UUID y lo propaga en el contexto reactivo.
+  - Registra entrada canonica (IN) con trazabilidad, operacion y payload.
+- ResponseLoggingFilter:
+  - Intercepta writeWith, writeAndFlushWith y setComplete.
+  - Reutiliza el mismo identificador de trazabilidad.
+  - Registra salida canonica (OUT), codigo HTTP y detalle de error cuando aplica.
+
+Alcance del Idempotency-Key en la implementacion actual:
+
+- Se usa para correlacion y trazabilidad de logs de entrada/salida.
+- implementa idempotencia de negocio solo como log para no afectar el modelo de la prueba.
+
+Ejemplo de log de entrada (IN):
+
+```json
+{
+  "id": "0f8fad5b-d9cb-469f-a165-70867728950e",
+  "domainNameService": "SCOTIABANK",
+  "domainNameUnity": "PERU",
+  "domainNameBusiness": "DIGITAL FACTORY",
+  "operation": "/v1/api/students",
+  "type": "IN",
+  "trace": "SUCCESS",
+  "responseCode": 200,
+  "data": {
+    "id": 1,
+    "name": "Julian",
+    "lastName": "Hurtado",
+    "state": "ACTIVE",
+    "age": 28
+  }
+}
+```
+
+Ejemplo de log de salida (OUT exito):
+
+```json
+{
+  "id": "0f8fad5b-d9cb-469f-a165-70867728950e",
+  "domainNameService": "SCOTIABANK",
+  "domainNameUnity": "PERU",
+  "domainNameBusiness": "DIGITAL FACTORY",
+  "operation": "/v1/api/students",
+  "type": "OUT",
+  "trace": "SUCCESS",
+  "responseCode": 201,
+  "data": {
+    "responseCode": 201,
+    "description": "Alumno creado exitosamente."
+  }
+}
+```
+
+Ejemplo de log de salida (OUT error):
+
+```json
+{
+  "id": "0f8fad5b-d9cb-469f-a165-70867728950e",
+  "domainNameService": "SCOTIABANK",
+  "domainNameUnity": "PERU",
+  "domainNameBusiness": "DIGITAL FACTORY",
+  "operation": "/v1/api/students",
+  "type": "OUT",
+  "trace": "ERROR",
+  "responseCode": 409,
+  "error": {
+    "code": 409,
+    "type": "ERROR",
+    "description": "No se pudo realizar la grabacion: el alumno con id 1 ya existe."
+  },
+  "data": {
+    "status": 409,
+    "message": "No se pudo realizar la grabacion: el alumno con id 1 ya existe."
+  }
+}
+```
+
+## Convenciones funcionales clave
+
+- Estados permitidos para entrada: ACTIVE, INACTIVE.
+- Mensaje funcional para id duplicado: error de conflicto sin exponer detalles internos.
+- Se evita uso de block() y llamadas bloqueantes equivalentes.
+
+## Demo rapida (3 minutos)
+
+1. Levantar servicio:
+
+```bash
+gradlew.bat bootRun
+```
+
+2. Crear alumno:
+
+```bash
+curl -X POST "http://localhost:8080/v1/api/students" \
+  -H "Content-Type: application/json" \
+  -H "Idempotency-Key: demo-001" \
+  -d "{\"id\":1,\"name\":\"Julian\",\"lastName\":\"Hurtado\",\"state\":\"ACTIVE\",\"age\":28}"
+```
+
+3. Forzar duplicado para ver 409:
+
+```bash
+curl -X POST "http://localhost:8080/v1/api/students" \
+  -H "Content-Type: application/json" \
+  -H "Idempotency-Key: demo-002" \
+  -d "{\"id\":1,\"name\":\"Julian\",\"lastName\":\"Hurtado\",\"state\":\"ACTIVE\",\"age\":28}"
+```
+
+4. Consultar activos:
+
+```bash
+curl "http://localhost:8080/v1/api/students/active" -H "Idempotency-Key: demo-003"
+```
+
+5. Revisar Swagger y reportes:
+
+- http://localhost:8080/swagger-ui.html
+- build/reports/tests/test/index.html
+- build/reports/jacoco/test/html/index.html
+
+## Supuestos y limitaciones
+
+- Persistencia en memoria orientada a challenge/demo, no a entorno productivo.
+- Flujo de duplicados basado en existsById + insert (posible carrera en concurrencia alta).
+- Idempotency-Key enfocado en trazabilidad, no en deduplicacion funcional.
+- H2 Console requiere habilitacion explicita de dependencia bloqueante para demo local.
+
+## Decisiones tecnicas y trade-offs
+
+- Se priorizo stack reactivo puro (WebFlux + R2DBC) sobre herramientas bloqueantes.
+- Se centralizo manejo de errores en GlobalExceptionHandler para contratos HTTP consistentes.
+- Se uso logging canonico para observabilidad completa de IN/OUT.
+- Se mantuvo arquitectura por capas para separar dominio, aplicacion e infraestructura.
+
+## Proximos pasos recomendados
+
+- Mapear error de clave duplicada de base a 409 para robustez en concurrencia.
+- Unificar Idempotency-Key en Postman usando header en todos los endpoints.
+- Agregar truncado/limites de payload en filtros de logging para evitar picos de memoria.
