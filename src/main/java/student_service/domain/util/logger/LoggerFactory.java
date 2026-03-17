@@ -1,8 +1,5 @@
 package student_service.domain.util.logger;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
-
 public interface LoggerFactory {
 
     default CanonicalLog createLog(String id, String operation, Object data, String typeMessage) {

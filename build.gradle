@@ -30,10 +30,7 @@ version = '0.0.1-SNAPSHOT'
 
 /*
 |--------------------------------------------------------------------------
-| Java configuration
-|--------------------------------------------------------------------------
-| Se utiliza Java 17 mediante toolchain para garantizar consistencia
-| entre entornos de desarrollo y CI/CD.
+| Java configuration | Se utiliza Java 17 mediante toolchain para garantizar consistencia
 |--------------------------------------------------------------------------
 */
 
@@ -81,14 +78,14 @@ repositories {
 */
 
 jacoco {
-	toolVersion = "0.8.10"
+	toolVersion = "0.8.11"
 }
 
 jacocoTestCoverageVerification {
 	violationRules {
 		rule {
 			limit {
-				minimum = 0.00
+				minimum = 0.80
 			}
 		}
 	}
@@ -96,6 +93,19 @@ jacocoTestCoverageVerification {
 
 jacocoTestReport {
 	dependsOn test
+
+	afterEvaluate {
+		classDirectories.setFrom(files(classDirectories.files.collect {
+			fileTree(dir: it, exclude: [
+					'**/config/**',
+					'**/dto/**',
+					'**/entity/**',
+					'**/mapper/**',
+					'**/*Application*'
+			])
+		}))
+	}
+
 	reports {
 		xml.required = true
 		html.required = true
@@ -131,6 +141,7 @@ spotbugs {
 }
 
 tasks.withType(com.github.spotbugs.snom.SpotBugsTask).configureEach {
+	excludeFilter = file("config/spotbugs-exclude.xml")
 	reports {
 		html.required = true
 	}
@@ -195,6 +206,7 @@ dependencies {
 */
 tasks.named('test') {
 	useJUnitPlatform()
+	finalizedBy jacocoTestReport
 }
 
 /*

@@ -151,4 +151,28 @@ class StudentControllerTest {
                 .jsonPath("$").isArray()
                 .jsonPath("$.length()").isEqualTo(0);
     }
+
+    @Test
+    @DisplayName("Debe responder 400 cuando se lanza IllegalArgumentException desde el caso de uso")
+    void debeResponder400CuandoIllegalArgumentException() {
+        when(createStudentUseCase.execute(any(Student.class)))
+                .thenReturn(Mono.error(new IllegalArgumentException("Argumento invalido")));
+
+        webTestClient.post().uri("/v1/api/students")
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue("""
+                        {
+                            "id": 1,
+                            "name": "Juan",
+                            "lastName": "Perez",
+                            "state": "ACTIVE",
+                            "age": 20
+                        }
+                        """)
+                .exchange()
+                .expectStatus().isBadRequest()
+                .expectBody()
+                .jsonPath("$.status").isEqualTo(400)
+                .jsonPath("$.error").isEqualTo("Datos invalidos");
+    }
 }

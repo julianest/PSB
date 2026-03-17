@@ -7,6 +7,7 @@ import org.reactivestreams.Publisher;
 import org.springframework.core.annotation.Order;
 import org.springframework.core.io.buffer.DataBuffer;
 import org.springframework.core.io.buffer.DataBufferUtils;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.http.server.reactive.ServerHttpResponse;
 import org.springframework.http.server.reactive.ServerHttpResponseDecorator;
 import org.springframework.stereotype.Component;
@@ -49,8 +50,8 @@ public class ResponseLoggingFilter implements WebFilter, LoggerFactory {
                             String responseBody = new String(content, StandardCharsets.UTF_8);
                             String traceId = exchange.getAttribute(RequestLoggingFilter.TRACE_ID);
                             String path = exchange.getRequest().getPath().value();
-                            int statusCode = originalResponse.getStatusCode() != null
-                                    ? originalResponse.getStatusCode().value() : 0;
+                            HttpStatusCode httpStatus = originalResponse.getStatusCode();
+                            int statusCode = httpStatus != null ? httpStatus.value() : 0;
 
                             logResponse(traceId, path, responseBody, statusCode);
 
@@ -68,8 +69,8 @@ public class ResponseLoggingFilter implements WebFilter, LoggerFactory {
             public Mono<Void> setComplete() {
                 String traceId = exchange.getAttribute(RequestLoggingFilter.TRACE_ID);
                 String path = exchange.getRequest().getPath().value();
-                int statusCode = originalResponse.getStatusCode() != null
-                        ? originalResponse.getStatusCode().value() : 0;
+                HttpStatusCode httpStatus = originalResponse.getStatusCode();
+                int statusCode = httpStatus != null ? httpStatus.value() : 0;
 
                 logResponse(traceId, path, null, statusCode);
 
