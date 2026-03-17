@@ -5,8 +5,9 @@
 # Stack    : Java 17 · Spring Boot 3.4.1 · Spring WebFlux · R2DBC · H2
 # Calidad  : JaCoCo (>=80%) · SpotBugs · SonarCloud (SONAR_TOKEN como Repository Secret)
 # Actuator : /actuator/health disponible para healthcheck
-# Artefact : JAR ejecutable via bootJar (solo rama main)
+# Artefact : JAR ejecutable via bootJar (solo rama main) + publicacion GitHub Packages
 # Motor    : Podman (OCI) — no Docker
+# Actions  : Node.js 24 (checkout@v4.2, setup-java@v4.7, cache@v4.2, upload-artifact@v4.6)
 # =============================================================================
 
 name: CI — Build · Test · Quality · Artifact
@@ -39,18 +40,18 @@ jobs:
 
     steps:
       - name: Checkout del repositorio
-        uses: actions/checkout@v4
+        uses: actions/checkout@v4.2.2
         with:
           fetch-depth: 0   # Requerido por SonarQube para analisis de historial
 
       - name: Setup Java 17 (Temurin)
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v4.7.0
         with:
           java-version: '17'
           distribution: 'temurin'
 
       - name: Cache Gradle
-        uses: actions/cache@v4
+        uses: actions/cache@v4.2.3
         with:
           path: |
             ~/.gradle/caches
@@ -66,7 +67,7 @@ jobs:
         run: ./gradlew build -x test --no-daemon
 
       - name: Publicar clases compiladas (cache entre jobs)
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v4.6.2
         with:
           name: build-classes
           path: build/classes/
@@ -82,18 +83,18 @@ jobs:
 
     steps:
       - name: Checkout del repositorio
-        uses: actions/checkout@v4
+        uses: actions/checkout@v4.2.2
         with:
           fetch-depth: 0
 
       - name: Setup Java 17 (Temurin)
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v4.7.0
         with:
           java-version: '17'
           distribution: 'temurin'
 
       - name: Cache Gradle
-        uses: actions/cache@v4
+        uses: actions/cache@v4.2.3
         with:
           path: |
             ~/.gradle/caches
@@ -113,7 +114,7 @@ jobs:
         run: ./gradlew jacocoTestCoverageVerification --no-daemon
 
       - name: Publicar reporte de pruebas Gradle
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v4.6.2
         if: always()
         with:
           name: gradle-test-report
@@ -121,7 +122,7 @@ jobs:
           retention-days: 15
 
       - name: Publicar reporte JaCoCo HTML
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v4.6.2
         if: always()
         with:
           name: jacoco-html-report
@@ -129,7 +130,7 @@ jobs:
           retention-days: 15
 
       - name: Publicar reporte JaCoCo XML
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v4.6.2
         if: always()
         with:
           name: jacoco-xml-report
@@ -147,16 +148,16 @@ jobs:
 
     steps:
       - name: Checkout del repositorio
-        uses: actions/checkout@v4
+        uses: actions/checkout@v4.2.2
 
       - name: Setup Java 17 (Temurin)
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v4.7.0
         with:
           java-version: '17'
           distribution: 'temurin'
 
       - name: Cache Gradle
-        uses: actions/cache@v4
+        uses: actions/cache@v4.2.3
         with:
           path: |
             ~/.gradle/caches
@@ -175,7 +176,7 @@ jobs:
         run: ./gradlew spotbugsMain spotbugsTest --no-daemon
 
       - name: Publicar reporte SpotBugs Main
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v4.6.2
         if: always()
         with:
           name: spotbugs-main-report
@@ -183,7 +184,7 @@ jobs:
           retention-days: 15
 
       - name: Publicar reporte SpotBugs Test
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v4.6.2
         if: always()
         with:
           name: spotbugs-test-report
@@ -204,18 +205,18 @@ jobs:
 
     steps:
       - name: Checkout del repositorio
-        uses: actions/checkout@v4
+        uses: actions/checkout@v4.2.2
         with:
           fetch-depth: 0   # Requerido por SonarQube para analisis de blame completo
 
       - name: Setup Java 17 (Temurin)
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v4.7.0
         with:
           java-version: '17'
           distribution: 'temurin'
 
       - name: Cache Gradle
-        uses: actions/cache@v4
+        uses: actions/cache@v4.2.3
         with:
           path: |
             ~/.gradle/caches
@@ -225,7 +226,7 @@ jobs:
             ${{ runner.os }}-gradle-
 
       - name: Cache SonarCloud
-        uses: actions/cache@v4
+        uses: actions/cache@v4.2.3
         with:
           path: ~/.sonar/cache
           key: ${{ runner.os }}-sonar
@@ -249,23 +250,32 @@ jobs:
   # Solo se ejecuta en la rama main (merge o push directo)
   # ===========================================================================
   artifact:
-    name: Generar Artefacto JAR
+    name: Generar y Publicar Artefacto JAR
     runs-on: ubuntu-latest
-    needs: [test, spotbugs]
+    # Espera a que sonar y quality-gate finalicen — el JAR se genera solo si todos los gates pasan
+    needs: [sonar, quality-gate]
     if: github.ref == 'refs/heads/main'
+    # Permiso para publicar en GitHub Packages (GitHub Container Registry / Maven)
+    permissions:
+      contents: read
+      packages: write
 
     steps:
       - name: Checkout del repositorio
-        uses: actions/checkout@v4
+        uses: actions/checkout@v4.2.2
 
-      - name: Setup Java 17 (Temurin)
-        uses: actions/setup-java@v4
+      - name: Setup Java 17 (Temurin) con GitHub Packages
+        uses: actions/setup-java@v4.7.0
         with:
           java-version: '17'
           distribution: 'temurin'
+          # Configura automaticamente settings.xml para publicar en GitHub Packages
+          server-id: github
+          server-username: GITHUB_ACTOR
+          server-password: GITHUB_TOKEN
 
       - name: Cache Gradle
-        uses: actions/cache@v4
+        uses: actions/cache@v4.2.3
         with:
           path: |
             ~/.gradle/caches
@@ -283,12 +293,19 @@ jobs:
       - name: Verificar JAR en build/libs/
         run: ls -lh build/libs/*.jar
 
-      - name: Publicar JAR como artefacto de GitHub Actions
-        uses: actions/upload-artifact@v4
+      - name: Publicar JAR como artefacto de GitHub Actions (descarga directa)
+        uses: actions/upload-artifact@v4.6.2
         with:
           name: student-service-jar
           path: build/libs/student-service-*.jar
           retention-days: 30
+
+      - name: Publicar JAR en GitHub Packages (Maven)
+        # Publica el JAR en la pestana Packages del repositorio como paquete Maven
+        # URL resultante: https://github.com/julianest/PSB/packages
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: ./gradlew publish --no-daemon
 
   # ===========================================================================
   # JOB 6 — Quality Gate final
@@ -302,16 +319,16 @@ jobs:
 
     steps:
       - name: Checkout del repositorio
-        uses: actions/checkout@v4
+        uses: actions/checkout@v4.2.2
 
       - name: Setup Java 17 (Temurin)
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v4.7.0
         with:
           java-version: '17'
           distribution: 'temurin'
 
       - name: Cache Gradle
-        uses: actions/cache@v4
+        uses: actions/cache@v4.2.3
         with:
           path: |
             ~/.gradle/caches

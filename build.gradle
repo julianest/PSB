@@ -21,6 +21,8 @@ plugins {
 	id 'jacoco'
 	// Code quality analysis
 	id "org.sonarqube" version "5.1.0.4882"
+	// Publicacion en GitHub Packages
+	id 'maven-publish'
 	// Static bug detection
 	id "com.github.spotbugs" version "6.0.7"
 }
@@ -214,3 +216,31 @@ tasks.named("sonarqube") {
 |--------------------------------------------------------------------------
 */
 check.dependsOn jacocoTestCoverageVerification
+
+/*
+|--------------------------------------------------------------------------
+| Maven Publish | Publicacion del JAR en GitHub Packages.
+| Ejecutar con: ./gradlew publish
+| Requiere: GITHUB_TOKEN y GITHUB_ACTOR como variables de entorno.
+|--------------------------------------------------------------------------
+*/
+publishing {
+	publications {
+		bootJar(MavenPublication) {
+			groupId = 'com.scotiabank.challenge'
+			artifactId = 'student-service'
+			version = project.version
+			artifact(bootJar)
+		}
+	}
+	repositories {
+		maven {
+			name = 'GitHubPackages'
+			url = uri('https://maven.pkg.github.com/julianest/PSB')
+			credentials {
+				username = System.getenv('GITHUB_ACTOR')
+				password = System.getenv('GITHUB_TOKEN')
+			}
+		}
+	}
+}
