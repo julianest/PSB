@@ -1,0 +1,57 @@
+# =============================================================================
+# podman-compose.yml — Student Service (entorno local / demo)
+# =============================================================================
+# Uso: podman-compose up --build
+# Alternativa: podman compose up --build  (si tienes podman-compose plugin)
+# Requiere: Podman + podman-compose
+#
+# Proyecto : Scotiabank Reactive Challenge
+# Puerto   : 8080 (host) → 8080 (contenedor)
+#
+# NOTA: Podman es compatible con Dockerfile estandar (OCI). No requiere daemon.
+# =============================================================================
+
+services:
+
+  student-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runtime   # Usa directamente el stage de runtime del multi-stage
+
+    container_name: student-service
+
+    ports:
+      - "${PORT:-8080}:8080"
+
+    environment:
+      # Puerto del servidor (puede sobreescribirse con variable de entorno HOST)
+      PORT: 8080
+      # Nivel de log de la aplicacion
+      LOGGING_LEVEL_ROOT: INFO
+      LOGGING_LEVEL_ORG_SPRINGFRAMEWORK: INFO
+      # Configuracion R2DBC H2 en memoria (igual que application.properties)
+      SPRING_R2DBC_URL: r2dbc:h2:mem:///studentdb;DB_CLOSE_DELAY=-1
+      SPRING_R2DBC_USERNAME: sa
+      SPRING_R2DBC_PASSWORD:
+      SPRING_SQL_INIT_MODE: always
+      # H2 Console deshabilitada en contenedor
+      SPRING_H2_CONSOLE_ENABLED: "false"
+
+    # Health check via Spring Actuator (management.endpoints.web.exposure.include=health)
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/actuator/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+    restart: on-failure:3
+
+    # Limitar recursos en entorno local/demo
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+        reservations:
+          memory: 256m

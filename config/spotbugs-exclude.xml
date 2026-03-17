@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  SpotBugs Exclusion Filter
+  ============================================================
+  Este archivo excluye falsos positivos conocidos relacionados con:
+  1. Beans Spring gestionados por DI: ObjectMapper y R2dbcEntityTemplate
+     son singletons thread-safe administrados por el contenedor.
+     SpotBugs no tiene contexto del ciclo de vida de DI y los marca como
+     EI_EXPOSE_REP2 aunque no representan riesgo real de seguridad.
+  2. Builder de Lombok para ErrorResponse: el campo 'details' del builder
+     es estado temporal; el constructor hace la copia defensiva al .build().
+-->
+<FindBugsFilter>
+
+    <!-- RequestLoggingFilter: ObjectMapper es singleton Spring, thread-safe -->
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP2"/>
+        <Class name="student_service.infraestructure.adapter.in.filter.RequestLoggingFilter"/>
+    </Match>
+
+    <!-- ResponseLoggingFilter: ObjectMapper es singleton Spring, thread-safe -->
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP2"/>
+        <Class name="student_service.infraestructure.adapter.out.filter.ResponseLoggingFilter"/>
+    </Match>
+
+    <!-- StudentRepositoryAdapter: R2dbcEntityTemplate es bean Spring gestionado -->
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP2"/>
+        <Class name="student_service.infraestructure.adapter.out.persistence.StudentRepositoryAdapter"/>
+    </Match>
+
+    <!--
+      ErrorResponseBuilder (generado por Lombok @Builder):
+      El campo 'details' en el builder es estado transitorio.
+      El constructor de ErrorResponse realiza List.copyOf() al invocar .build().
+    -->
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP2"/>
+        <Class name="student_service.infraestructure.adapter.in.dto.ErrorResponse$ErrorResponseBuilder"/>
+    </Match>
+
+</FindBugsFilter>

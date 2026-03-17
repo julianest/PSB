@@ -30,10 +30,7 @@ version = '0.0.1-SNAPSHOT'
 
 /*
 |--------------------------------------------------------------------------
-| Java configuration
-|--------------------------------------------------------------------------
-| Se utiliza Java 17 mediante toolchain para garantizar consistencia
-| entre entornos de desarrollo y CI/CD.
+| Java configuration | Se utiliza Java 17 mediante toolchain para garantizar consistencia
 |--------------------------------------------------------------------------
 */
 
@@ -45,10 +42,7 @@ java {
 
 /*
 |--------------------------------------------------------------------------
-| Configurations
-|--------------------------------------------------------------------------
-| Permite que Lombok funcione correctamente durante la compilación
-| extendiendo annotationProcessor hacia compileOnly.
+| Configurations | Permite la compilación extendiendo annotationProcessor hacia compileOnly.
 |--------------------------------------------------------------------------
 */
 
@@ -70,25 +64,22 @@ repositories {
 
 /*
 |--------------------------------------------------------------------------
-| JaCoCo configuration
-| JaCoCo Reports
+| JaCoCo configuration | JaCoCo Reports
 |--------------------------------------------------------------------------
-| Herramienta de cobertura de código.
-| Se exige mínimo 80% de cobertura.
-| Genera reportes HTML y XML.
-| El XML es consumido por SonarQube.
+| Herramienta de cobertura de código. | Se exige mínimo 80% de cobertura.
+| Genera reportes HTML y XML. | El XML es consumido por SonarQube.
 |--------------------------------------------------------------------------
 */
 
 jacoco {
-	toolVersion = "0.8.10"
+	toolVersion = "0.8.11"
 }
 
 jacocoTestCoverageVerification {
 	violationRules {
 		rule {
 			limit {
-				minimum = 0.00
+				minimum = 0.80
 			}
 		}
 	}
@@ -96,6 +87,19 @@ jacocoTestCoverageVerification {
 
 jacocoTestReport {
 	dependsOn test
+
+	afterEvaluate {
+		classDirectories.setFrom(files(classDirectories.files.collect {
+			fileTree(dir: it, exclude: [
+					'**/config/**',
+					'**/dto/**',
+					'**/entity/**',
+					'**/mapper/**',
+					'**/*Application*'
+			])
+		}))
+	}
+
 	reports {
 		xml.required = true
 		html.required = true
@@ -104,19 +108,19 @@ jacocoTestReport {
 
 /*
 |--------------------------------------------------------------------------
-| SonarQube configuration
-|--------------------------------------------------------------------------
-| Integración para análisis de calidad.
-| Consume el reporte de JaCoCo.
+| SonarQube configuration | Integración para análisis de calidad. | Consume el reporte de JaCoCo.
 |--------------------------------------------------------------------------
 */
 
 sonarqube {
 	properties {
+		property "sonar.projectName", "Scotiabank Reactive Challenge"
+		property "sonar.projectVersion", "1.0"
 		property "sonar.projectKey", "bank-test"
-		property "sonar.host.url", "http://localhost:9000"
+		property "sonar.host.url", "https://sonarcloud.io"
 		property "sonar.coverage.jacoco.xmlReportPaths",
 				"$buildDir/reports/jacoco/test/jacocoTestReport.xml"
+		property "sonar.sourceEncoding", "UTF-8"
 	}
 }
 
@@ -131,6 +135,7 @@ spotbugs {
 }
 
 tasks.withType(com.github.spotbugs.snom.SpotBugsTask).configureEach {
+	excludeFilter = file("config/spotbugs-exclude.xml")
 	reports {
 		html.required = true
 	}
@@ -138,15 +143,7 @@ tasks.withType(com.github.spotbugs.snom.SpotBugsTask).configureEach {
 
 /*
 |--------------------------------------------------------------------------
-| Dependencies
-|--------------------------------------------------------------------------
-| Stack Reactivo completo:
-| - WebFlux
-| - R2DBC
-| - H2
-| - MapStruct
-| - Lombok
-| - Testing reactivo
+| Dependencies | Stack Reactivo completo
 |--------------------------------------------------------------------------
 */
 
@@ -161,11 +158,14 @@ dependencies {
 	implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310'
 
 	// OpenAPI / Swagger
-	implementation 'org.springdoc:springdoc-openapi-starter-webflux-ui:2.5.0'
+	implementation 'org.springdoc:springdoc-openapi-starter-webflux-ui:2.7.0'
 
 	// Lombok | Reducir boilerplate code
 	compileOnly 'org.projectlombok:lombok'
 	annotationProcessor 'org.projectlombok:lombok'
+
+	// Actuator | Monitoreo y métricas de la aplicación
+	implementation 'org.springframework.boot:spring-boot-starter-actuator'
 
 	// MapStruct | Mapeo entre DTOs y entidades
 	implementation 'org.mapstruct:mapstruct:1.5.5.Final'
@@ -176,6 +176,8 @@ dependencies {
 	// Database | Base de datos en memoria H2 con driver reactivo R2DBC.
 	runtimeOnly 'com.h2database:h2'
 	runtimeOnly 'io.r2dbc:r2dbc-h2'
+	// Habilitacion de H2 Console.
+	// implementation 'org.springframework.boot:spring-boot-starter-web'
 
 	// Testing
 	// Launcher de JUnit Platform
@@ -193,6 +195,15 @@ dependencies {
 */
 tasks.named('test') {
 	useJUnitPlatform()
+	finalizedBy jacocoTestReport
+}
+
+tasks.named("sonarqube") {
+	dependsOn test, jacocoTestReport
+
+	onlyIf {
+		System.getenv("SONAR_TOKEN") != null
+	}
 }
 
 /*
