@@ -19,6 +19,7 @@ Microservicio backend reactivo para el reto Scotiabank Reactive Challenge.
 - Spring Data R2DBC
 - H2 en memoria (R2DBC + JDBC para consola)
 - Bean Validation
+- Spring Boot Actuator (health/info)
 - OpenAPI/Swagger con springdoc-openapi-starter-webflux-ui 2.7.0
 - MapStruct + Lombok
 
@@ -49,12 +50,24 @@ Base path: /v1/api/students
   - Lista alumnos con estado ACTIVE.
   - Respuesta esperada: 200.
 
+Endpoints de observabilidad (Actuator):
+
+- GET /actuator/health
+  - Verifica estado de salud del servicio (healthcheck de runtime/CI).
+  - Respuesta esperada: 200.
+
+- GET /actuator/info
+  - Expone informacion general del servicio.
+  - Respuesta esperada: 200.
+
 ### Resumen de endpoints
 
 | Metodo | Endpoint | Descripcion | Respuestas |
 | --- | --- | --- | --- |
 | POST | /v1/api/students | Crea alumno con validaciones y control de id duplicado | 201, 400, 409 |
 | GET | /v1/api/students/active | Lista alumnos activos | 200 |
+| GET | /actuator/health | Estado de salud del servicio para monitoreo/healthcheck | 200 |
+| GET | /actuator/info | Informacion general del servicio | 200 |
 
 ## Persistencia y configuracion
 
@@ -68,11 +81,74 @@ Base path: /v1/api/students
 - JaCoCo 0.8.11 con reporte XML/HTML.
 - Regla de cobertura minima global: 80% (jacocoTestCoverageVerification).
 - Exclusion de paquetes tecnicos para metrica de cobertura (config, dto, entity, mapper, Application).
-- SonarQube plugin configurado para SonarCloud:
+- SonarCloud configurado con scanner CLI via GitHub Actions:
+  - Archivo: sonar-project.properties
   - sonar.projectKey=bank-test
   - sonar.host.url=https://sonarcloud.io
-  - Ejecucion condicionada a SONAR_TOKEN.
+  - Ejecucion con SONAR_TOKEN en Repository Secrets.
 - SpotBugs activo con filtro en config/spotbugs-exclude.xml.
+
+## CI/CD en GitHub Actions
+
+Workflow principal:
+
+- Archivo: .github/workflows/ci.yml
+- Triggers: push (main, develop, feature/**, hotfix/**) y pull_request (main, develop)
+- Orden de validaciones:
+  - build
+  - test + jacoco
+  - spotbugs
+  - sonar
+  - quality-gate
+  - artifact (solo en main, despues de sonar + quality-gate)
+
+Mapa resumido del flujo:
+
+```text
+build ──┬── test ──────────────┬── sonar ──────────┐
+  │                      │                    ├── artifact (solo main)
+  └── spotbugs ──────────┴── quality-gate ────┘
+```
+
+Comportamiento de artefactos:
+
+- GitHub Actions Artifact:
+  - Se publica `build/libs/student-service-*.jar` como artifact descargable del run.
+  - Como descargarlo:
+    1. Ir a la pestana Actions del repositorio.
+    2. Abrir la ejecucion del workflow en main.
+    3. En la seccion Artifacts descargar `student-service-jar`.
+  - Como ejecutarlo:
+    - `java -jar student-service-0.0.1-SNAPSHOT.jar`
+- GitHub Packages (Maven):
+  - En rama main tambien se ejecuta `./gradlew publish`.
+  - Se publica el paquete en el registro Maven del repositorio.
+  - URL de registro Maven del repo:
+    - `https://maven.pkg.github.com/julianest/PSB`
+
+## Reglas de validacion Sonar (Quality Gate recomendado)
+
+Reglas generales recomendadas para aprobar analisis en SonarCloud:
+
+- New Bugs: 0
+- New Vulnerabilities: 0
+- New Security Hotspots Reviewed: 100%
+- Coverage on New Code: >= 80%
+- Duplicated Lines on New Code: <= 3%
+- Maintainability Rating on New Code: A
+- Reliability Rating on New Code: A
+- Security Rating on New Code: A
+
+Donde se configura:
+
+- Alcance de analisis y exclusiones del scanner: `sonar-project.properties`.
+- Definicion del Quality Gate (umbrales y condiciones): interfaz de SonarCloud.
+  - Ruta: Project Settings -> Quality Gate / Quality Profiles.
+- En CI, el reporte se ejecuta con scanner CLI y usa `SONAR_TOKEN` desde Repository Secrets.
+
+Compatibilidad de Actions:
+
+- El workflow usa versiones actualizadas de acciones para compatibilidad con Node.js 24.
 
 ## Pruebas
 
@@ -90,12 +166,6 @@ Estado verificado en esta revision:
 - 0 omitidas.
 - 100% exitosas.
 
-Corte de metricas mostrado en este README:
-
-- Fuente: build/reports/tests/test/index.html
-- Generado por: Gradle 9.3.1
-- Fecha/hora del reporte: 16/03/2026 9:23:23 p. m.
-
 ## Comandos utiles
 
 ```bash
@@ -104,12 +174,16 @@ gradlew.bat test
 gradlew.bat jacocoTestReport
 gradlew.bat check
 gradlew.bat spotbugsMain spotbugsTest
+gradlew.bat bootJar
+gradlew.bat publish
 
 # Linux/macOS
 ./gradlew test
 ./gradlew jacocoTestReport
 ./gradlew check
 ./gradlew spotbugsMain spotbugsTest
+./gradlew bootJar
+./gradlew publish
 ```
 
 ## Enlaces de reportes y herramientas
@@ -121,6 +195,23 @@ gradlew.bat spotbugsMain spotbugsTest
 - JaCoCo XML: [build/reports/jacoco/test/jacocoTestReport.xml](build/reports/jacoco/test/jacocoTestReport.xml)
 - SpotBugs main: [build/reports/spotbugs/main.html](build/reports/spotbugs/main.html)
 - SpotBugs test: [build/reports/spotbugs/test.html](build/reports/spotbugs/test.html)
+- SonarCloud (analisis Remoto): [https://sonarcloud.io/summary/new_code?id=bank-test&branch=main](https://sonarcloud.io/summary/new_code?id=bank-test&branch=main)
+  Nota: este enlace requiere autenticación y permisos del administrador de este proyecto.
+- Artifact generado en CI (descarga): Actions -> workflow run -> Artifacts -> student-service-jar.
+- Package publicado (Maven): GitHub repo -> pestaña Packages.
+
+### Resumen Reportes
+
+#### Gradle test
+![GradleTest Report](src/main/resources/GradleTest_Report.png)
+#### Jacoco Coverage
+![Jacoco Report](src/main/resources/Jacoco_Report.png)
+#### SpotBugs
+![SpotBug Analisis](src/main/resources/SpotBug_Analisis.png)
+#### Sonar Cloud
+![Sonar Analisis](src/main/resources/Sonar_Analisis.png)
+#### Artifact CI- Package Maven
+![Artifact](src/main/resources/Artifact.png)
 
 ### Consolas y documentacion runtime
 
@@ -143,6 +234,7 @@ Esta dependencia se mantiene comentada porque levanta Tomcat (stack bloqueante),
 | Gradle Test Report | [build/reports/tests/test/index.html](build/reports/tests/test/index.html) | 26 tests, 0 failures, 0 skipped, success rate 100%, duration 31.494s |
 | JaCoCo Report | [build/reports/jacoco/test/jacocoTestReport.xml](build/reports/jacoco/test/jacocoTestReport.xml) | Lineas: 167/173 = 96.53%. Instrucciones: 691/715 = 96.64%. Branches: 18/26 = 69.23% |
 | SpotBugs Main | [build/reports/spotbugs/main.html](build/reports/spotbugs/main.html) | 632 lineas analizadas, 38 clases, 13 paquetes, 0 warnings |
+| SonarCloud | [https://sonarcloud.io/summary/new_code?id=bank-test&branch=main](https://sonarcloud.io/summary/new_code?id=bank-test&branch=main) | Analisis remoto de calidad, seguridad y deuda tecnica en rama main |
 | Swagger/OpenAPI | [http://localhost:8080/swagger-ui.html](http://localhost:8080/swagger-ui.html) | UI disponible en runtime para probar contratos y esquemas |
 | H2 Console | [http://localhost:8080/h2-console](http://localhost:8080/h2-console) | Requiere descomentar spring-boot-starter-web para habilitar acceso web |
 
@@ -155,7 +247,7 @@ Esta dependencia se mantiene comentada porque levanta Tomcat (stack bloqueante),
 | Listar alumnos activos | Endpoint GET que filtra por estado ACTIVE | GetActiveStudentsUseCase + pruebas |
 | Persistencia en memoria | H2 + R2DBC + schema.sql | Configuracion + pruebas de repositorio |
 | Pruebas por capa | Tests de controller, use case, repository/adapter y filtro | build/reports/tests/test/index.html |
-| Calidad tecnica | JaCoCo, SpotBugs y gate de cobertura | Reportes en build/reports |
+| Calidad tecnica | JaCoCo, SpotBugs, SonarCloud y gate de cobertura | Reportes locales + SonarCloud |
 
 ## Coleccion Postman
 
@@ -200,8 +292,6 @@ erDiagram
   }
 ```
 
-![Modelo Entidad Relacion](src/main/resources/Modelo%20Entidad%20Relacion%20%28MER%29.png)
-
 ## Modelo de flujo
 
 ```mermaid
@@ -218,8 +308,6 @@ flowchart LR
   A --> J[RequestLoggingFilter]
   B --> K[ResponseLoggingFilter]
 ```
-
-![Diagrama de Flujo](src/main/resources/Diagrama%20de%20Flujo.png)
 
 ## Filtros de auditoria y verificacion
 
@@ -238,6 +326,7 @@ Alcance del Idempotency-Key en la implementacion actual:
 
 - Se usa para correlacion y trazabilidad de logs de entrada/salida.
 - implementa idempotencia de negocio solo como log para no afectar el modelo de la prueba.
+- El formato de los eventos sigue un modelo canonico de logs como simulacion de revision de arquitectura BIAN en entornos bancarios.
 
 Ejemplo de log de entrada (IN):
 
@@ -342,11 +431,30 @@ curl -X POST "http://localhost:8080/v1/api/students" \
 curl "http://localhost:8080/v1/api/students/active" -H "Idempotency-Key: demo-003"
 ```
 
-5. Revisar Swagger y reportes:
+5. Verificar observabilidad con Actuator:
+
+```bash
+curl "http://localhost:8080/actuator/health"
+curl "http://localhost:8080/actuator/info"
+```
+
+6. Revisar Swagger, reportes y calidad:
 
 - http://localhost:8080/swagger-ui.html
 - build/reports/tests/test/index.html
 - build/reports/jacoco/test/html/index.html
+- build/reports/spotbugs/main.html
+- https://sonarcloud.io/summary/new_code?id=bank-test&branch=main
+
+7. Descargar y ejecutar artefacto generado en CI (main):
+
+- Ir a Actions -> workflow run -> Artifacts -> `student-service-jar`.
+- Descargar el ZIP y extraer el JAR.
+- Ejecutar:
+
+```bash
+java -jar student-service-0.0.1-SNAPSHOT.jar
+```
 
 ## Supuestos y limitaciones
 
@@ -355,14 +463,14 @@ curl "http://localhost:8080/v1/api/students/active" -H "Idempotency-Key: demo-00
 - Idempotency-Key enfocado en trazabilidad, no en deduplicacion funcional.
 - H2 Console requiere habilitacion explicita de dependencia bloqueante para demo local.
 
-## Decisiones tecnicas y trade-offs
+## Decisiones técnicas y trade-offs
 
 - Se priorizo stack reactivo puro (WebFlux + R2DBC) sobre herramientas bloqueantes.
 - Se centralizo manejo de errores en GlobalExceptionHandler para contratos HTTP consistentes.
 - Se uso logging canonico para observabilidad completa de IN/OUT.
 - Se mantuvo arquitectura por capas para separar dominio, aplicacion e infraestructura.
 
-## Proximos pasos recomendados
+## Próximos pasos recomendados
 
 - Mapear error de clave duplicada de base a 409 para robustez en concurrencia.
 - Unificar Idempotency-Key en Postman usando header en todos los endpoints.
