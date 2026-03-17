@@ -193,7 +193,9 @@ jobs:
   # ===========================================================================
   # JOB 4 — Analisis SonarCloud
   # SONAR_TOKEN configurado como Repository Secret en GitHub.
-  # El guard onlyIf en build.gradle omite el analisis si el secreto no esta presente.
+  # Usa sonarcloud-github-action (scanner CLI) en lugar del plugin Gradle para
+  # evitar la incompatibilidad del plugin org.sonarqube con la Convention API
+  # eliminada en Gradle 9.x (NoSuchMethodError: DslObject.getConvention).
   # ===========================================================================
   sonar:
     name: Analisis SonarCloud
@@ -232,15 +234,15 @@ jobs:
       - name: Permiso de ejecucion al wrapper
         run: chmod +x gradlew
 
-      - name: Ejecutar tests + JaCoCo (prerequisito de sonarqube)
+      - name: Compilar + generar JaCoCo (clases y reporte necesarios para el scanner)
+        # El scanner CLI necesita las clases compiladas y el XML de JaCoCo presentes
         run: ./gradlew test jacocoTestReport --no-daemon
 
-      - name: Ejecutar analisis SonarCloud
-        # SONAR_TOKEN expuesto como variable de entorno; build.gradle usa onlyIf para validarlo
+      - name: Ejecutar analisis SonarCloud (scanner CLI — sin plugin Gradle)
+        uses: SonarSource/sonarcloud-github-action@v3
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-        run: ./gradlew sonarqube --no-daemon
 
   # ===========================================================================
   # JOB 5 — Generacion del artefacto JAR ejecutable
