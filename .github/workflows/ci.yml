@@ -1,0 +1,329 @@
+# =============================================================================
+# CI/CD Pipeline — Student Service
+# =============================================================================
+# Proyecto : Scotiabank Reactive Challenge
+# Stack    : Java 17 · Spring Boot 3.4.1 · Spring WebFlux · R2DBC · H2
+# Calidad  : JaCoCo (>=80%) · SpotBugs · SonarCloud (SONAR_TOKEN como Repository Secret)
+# Actuator : /actuator/health disponible para healthcheck
+# Artefact : JAR ejecutable via bootJar (solo rama main)
+# Motor    : Podman (OCI) — no Docker
+# =============================================================================
+
+name: CI — Build · Test · Quality · Artifact
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+      - 'feature/**'
+      - 'hotfix/**'
+  pull_request:
+    branches:
+      - main
+      - develop
+
+# Evitar ejecuciones concurrentes en la misma rama/PR
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+
+  # ===========================================================================
+  # JOB 1 — Compilacion y ensamblado limpio
+  # ===========================================================================
+  build:
+    name: Compilacion
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout del repositorio
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # Requerido por SonarQube para analisis de historial
+
+      - name: Setup Java 17 (Temurin)
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Cache Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+
+      - name: Permiso de ejecucion al wrapper
+        run: chmod +x gradlew
+
+      - name: Compilar sin pruebas
+        run: ./gradlew build -x test --no-daemon
+
+      - name: Publicar clases compiladas (cache entre jobs)
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-classes
+          path: build/classes/
+          retention-days: 1
+
+  # ===========================================================================
+  # JOB 2 — Pruebas unitarias + cobertura JaCoCo (minimo 80%)
+  # ===========================================================================
+  test:
+    name: Pruebas y Cobertura JaCoCo
+    runs-on: ubuntu-latest
+    needs: build
+
+    steps:
+      - name: Checkout del repositorio
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Java 17 (Temurin)
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Cache Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+
+      - name: Permiso de ejecucion al wrapper
+        run: chmod +x gradlew
+
+      - name: Ejecutar pruebas + generar reporte JaCoCo
+        # La tarea 'test' llama a 'jacocoTestReport' vía finalizedBy (build.gradle)
+        run: ./gradlew test --no-daemon
+
+      - name: Verificar umbral de cobertura minimo (80%)
+        run: ./gradlew jacocoTestCoverageVerification --no-daemon
+
+      - name: Publicar reporte de pruebas Gradle
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: gradle-test-report
+          path: build/reports/tests/test/
+          retention-days: 15
+
+      - name: Publicar reporte JaCoCo HTML
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: jacoco-html-report
+          path: build/reports/jacoco/test/html/
+          retention-days: 15
+
+      - name: Publicar reporte JaCoCo XML
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: jacoco-xml-report
+          path: build/reports/jacoco/test/jacocoTestReport.xml
+          retention-days: 15
+
+  # ===========================================================================
+  # JOB 3 — Analisis estatico con SpotBugs
+  # Usa config/spotbugs-exclude.xml (plugin 6.0.7 / toolVersion 4.8.3)
+  # ===========================================================================
+  spotbugs:
+    name: Analisis Estatico SpotBugs
+    runs-on: ubuntu-latest
+    needs: build
+
+    steps:
+      - name: Checkout del repositorio
+        uses: actions/checkout@v4
+
+      - name: Setup Java 17 (Temurin)
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Cache Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+
+      - name: Permiso de ejecucion al wrapper
+        run: chmod +x gradlew
+
+      - name: Compilar clases (prerequisito de SpotBugs)
+        run: ./gradlew classes testClasses --no-daemon
+
+      - name: Ejecutar SpotBugs en main y test
+        run: ./gradlew spotbugsMain spotbugsTest --no-daemon
+
+      - name: Publicar reporte SpotBugs Main
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: spotbugs-main-report
+          path: build/reports/spotbugs/main.html
+          retention-days: 15
+
+      - name: Publicar reporte SpotBugs Test
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: spotbugs-test-report
+          path: build/reports/spotbugs/test.html
+          retention-days: 15
+
+  # ===========================================================================
+  # JOB 4 — Analisis SonarCloud
+  # SONAR_TOKEN configurado como Repository Secret en GitHub.
+  # El guard onlyIf en build.gradle omite el analisis si el secreto no esta presente.
+  # ===========================================================================
+  sonar:
+    name: Analisis SonarCloud
+    runs-on: ubuntu-latest
+    needs: [test, spotbugs]
+
+    steps:
+      - name: Checkout del repositorio
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # Requerido por SonarQube para analisis de blame completo
+
+      - name: Setup Java 17 (Temurin)
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Cache Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+
+      - name: Cache SonarCloud
+        uses: actions/cache@v4
+        with:
+          path: ~/.sonar/cache
+          key: ${{ runner.os }}-sonar
+          restore-keys: ${{ runner.os }}-sonar
+
+      - name: Permiso de ejecucion al wrapper
+        run: chmod +x gradlew
+
+      - name: Ejecutar tests + JaCoCo (prerequisito de sonarqube)
+        run: ./gradlew test jacocoTestReport --no-daemon
+
+      - name: Ejecutar analisis SonarCloud
+        # SONAR_TOKEN expuesto como variable de entorno; build.gradle usa onlyIf para validarlo
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: ./gradlew sonarqube --no-daemon
+
+  # ===========================================================================
+  # JOB 5 — Generacion del artefacto JAR ejecutable
+  # Solo se ejecuta en la rama main (merge o push directo)
+  # ===========================================================================
+  artifact:
+    name: Generar Artefacto JAR
+    runs-on: ubuntu-latest
+    needs: [test, spotbugs]
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Checkout del repositorio
+        uses: actions/checkout@v4
+
+      - name: Setup Java 17 (Temurin)
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Cache Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+
+      - name: Permiso de ejecucion al wrapper
+        run: chmod +x gradlew
+
+      - name: Generar JAR ejecutable con bootJar
+        run: ./gradlew bootJar --no-daemon
+
+      - name: Verificar JAR en build/libs/
+        run: ls -lh build/libs/*.jar
+
+      - name: Publicar JAR como artefacto de GitHub Actions
+        uses: actions/upload-artifact@v4
+        with:
+          name: student-service-jar
+          path: build/libs/student-service-*.jar
+          retention-days: 30
+
+  # ===========================================================================
+  # JOB 6 — Quality Gate final
+  # Ejecuta gradlew check: test + jacocoTestCoverageVerification + spotbugsMain + spotbugsTest
+  # Se ejecuta en todas las ramas; no depende del job artifact
+  # ===========================================================================
+  quality-gate:
+    name: Quality Gate Final
+    runs-on: ubuntu-latest
+    needs: [test, spotbugs]
+
+    steps:
+      - name: Checkout del repositorio
+        uses: actions/checkout@v4
+
+      - name: Setup Java 17 (Temurin)
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Cache Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+
+      - name: Permiso de ejecucion al wrapper
+        run: chmod +x gradlew
+
+      - name: Ejecutar gate completo
+        # check = test + jacocoTestReport + jacocoTestCoverageVerification + spotbugsMain + spotbugsTest
+        run: ./gradlew check --no-daemon
+
+      - name: Gate aprobado
+        run: echo "Pipeline aprobado — compilacion, pruebas, cobertura (>=80%) y analisis estatico OK."
