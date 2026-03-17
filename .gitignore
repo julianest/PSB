@@ -37,7 +37,8 @@ out/
 .vscode/
 
 ### Copilot ###
-.github/
+.github/agents
+.github/instructions
 
 ### docs ###
 docs/
