@@ -42,10 +42,7 @@ java {
 
 /*
 |--------------------------------------------------------------------------
-| Configurations
-|--------------------------------------------------------------------------
-| Permite que Lombok funcione correctamente durante la compilación
-| extendiendo annotationProcessor hacia compileOnly.
+| Configurations | Permite la compilación extendiendo annotationProcessor hacia compileOnly.
 |--------------------------------------------------------------------------
 */
 
@@ -67,13 +64,10 @@ repositories {
 
 /*
 |--------------------------------------------------------------------------
-| JaCoCo configuration
-| JaCoCo Reports
+| JaCoCo configuration | JaCoCo Reports
 |--------------------------------------------------------------------------
-| Herramienta de cobertura de código.
-| Se exige mínimo 80% de cobertura.
-| Genera reportes HTML y XML.
-| El XML es consumido por SonarQube.
+| Herramienta de cobertura de código. | Se exige mínimo 80% de cobertura.
+| Genera reportes HTML y XML. | El XML es consumido por SonarQube.
 |--------------------------------------------------------------------------
 */
 
@@ -114,10 +108,7 @@ jacocoTestReport {
 
 /*
 |--------------------------------------------------------------------------
-| SonarQube configuration
-|--------------------------------------------------------------------------
-| Integración para análisis de calidad.
-| Consume el reporte de JaCoCo.
+| SonarQube configuration | Integración para análisis de calidad. | Consume el reporte de JaCoCo.
 |--------------------------------------------------------------------------
 */
 
@@ -152,15 +143,7 @@ tasks.withType(com.github.spotbugs.snom.SpotBugsTask).configureEach {
 
 /*
 |--------------------------------------------------------------------------
-| Dependencies
-|--------------------------------------------------------------------------
-| Stack Reactivo completo:
-| - WebFlux
-| - R2DBC
-| - H2
-| - MapStruct
-| - Lombok
-| - Testing reactivo
+| Dependencies | Stack Reactivo completo
 |--------------------------------------------------------------------------
 */
 
@@ -180,6 +163,9 @@ dependencies {
 	// Lombok | Reducir boilerplate code
 	compileOnly 'org.projectlombok:lombok'
 	annotationProcessor 'org.projectlombok:lombok'
+
+	// Actuator | Monitoreo y métricas de la aplicación
+	implementation 'org.springframework.boot:spring-boot-starter-actuator'
 
 	// MapStruct | Mapeo entre DTOs y entidades
 	implementation 'org.mapstruct:mapstruct:1.5.5.Final'
