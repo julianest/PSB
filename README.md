@@ -35,20 +35,25 @@ Implementacion actual de la HU-001:
 
 - Crear alumno: validacion de datos + validacion de id duplicado.
 - Listar alumnos activos: filtrado por estado ACTIVE.
-- Manejo de errores centralizado con GlobalExceptionHandler.
+- Manejo de errores centralizado con GlobalExceptionHandler (400, 409 y 500 controlado).
 - Logging canonico de request/response con filtros reactivos.
 
 ## API HTTP
 
-Base path: /v1/api/students
+Base URL:
+
+- Local: http://localhost:8080
+- Deployed (Render): https://psb-uka6.onrender.com
+
+Base path negocio: /v1/api/students
 
 - POST /v1/api/students
   - Crea un alumno.
-  - Respuestas esperadas: 201, 400, 409.
+  - Respuestas esperadas: 201, 400, 409, 500.
 
 - GET /v1/api/students/active
   - Lista alumnos con estado ACTIVE.
-  - Respuesta esperada: 200.
+  - Respuestas esperadas: 200, 500.
 
 Endpoints de observabilidad (Actuator):
 
@@ -64,8 +69,8 @@ Endpoints de observabilidad (Actuator):
 
 | Metodo | Endpoint | Descripcion | Respuestas |
 | --- | --- | --- | --- |
-| POST | /v1/api/students | Crea alumno con validaciones y control de id duplicado | 201, 400, 409 |
-| GET | /v1/api/students/active | Lista alumnos activos | 200 |
+| POST | /v1/api/students | Crea alumno con validaciones y control de id duplicado | 201, 400, 409, 500 |
+| GET | /v1/api/students/active | Lista alumnos activos | 200, 500 |
 | GET | /actuator/health | Estado de salud del servicio para monitoreo/healthcheck | 200 |
 | GET | /actuator/info | Informacion general del servicio | 200 |
 
@@ -215,9 +220,17 @@ gradlew.bat publish
 
 ### Consolas y documentacion runtime
 
-- Swagger UI: [http://localhost:8080/swagger-ui.html](http://localhost:8080/swagger-ui.html)
-- OpenAPI JSON: [http://localhost:8080/v3/api-docs](http://localhost:8080/v3/api-docs)
-- H2 Console: [http://localhost:8080/h2-console](http://localhost:8080/h2-console)
+- Local:
+  - Swagger UI: [http://localhost:8080/swagger-ui.html](http://localhost:8080/swagger-ui.html)
+  - OpenAPI JSON: [http://localhost:8080/v3/api-docs](http://localhost:8080/v3/api-docs)
+  - Healthcheck: [http://localhost:8080/actuator/health](http://localhost:8080/actuator/health)
+  - Info: [http://localhost:8080/actuator/info](http://localhost:8080/actuator/info)
+  - H2 Console: [http://localhost:8080/h2-console](http://localhost:8080/h2-console)
+- Deployed (Render):
+  - Swagger UI: [https://psb-uka6.onrender.com/swagger-ui.html](https://psb-uka6.onrender.com/swagger-ui.html)
+  - OpenAPI JSON: [https://psb-uka6.onrender.com/v3/api-docs](https://psb-uka6.onrender.com/v3/api-docs)
+  - Healthcheck: [https://psb-uka6.onrender.com/actuator/health](https://psb-uka6.onrender.com/actuator/health)
+  - Info: [https://psb-uka6.onrender.com/actuator/info](https://psb-uka6.onrender.com/actuator/info)
 
 ### Nota importante para H2 Console
 
@@ -235,8 +248,9 @@ Esta dependencia se mantiene comentada porque levanta Tomcat (stack bloqueante),
 | JaCoCo Report | [build/reports/jacoco/test/jacocoTestReport.xml](build/reports/jacoco/test/jacocoTestReport.xml) | Lineas: 167/173 = 96.53%. Instrucciones: 691/715 = 96.64%. Branches: 18/26 = 69.23% |
 | SpotBugs Main | [build/reports/spotbugs/main.html](build/reports/spotbugs/main.html) | 632 lineas analizadas, 38 clases, 13 paquetes, 0 warnings |
 | SonarCloud | [https://sonarcloud.io/summary/new_code?id=bank-test&branch=main](https://sonarcloud.io/summary/new_code?id=bank-test&branch=main) | Analisis remoto de calidad, seguridad y deuda tecnica en rama main |
-| Swagger/OpenAPI | [http://localhost:8080/swagger-ui.html](http://localhost:8080/swagger-ui.html) | UI disponible en runtime para probar contratos y esquemas |
-| H2 Console | [http://localhost:8080/h2-console](http://localhost:8080/h2-console) | Requiere descomentar spring-boot-starter-web para habilitar acceso web |
+| Swagger/OpenAPI (Local) | [http://localhost:8080/swagger-ui.html](http://localhost:8080/swagger-ui.html) | UI disponible en runtime local para probar contratos y esquemas |
+| Swagger/OpenAPI (Deployed) | [https://psb-uka6.onrender.com/swagger-ui.html](https://psb-uka6.onrender.com/swagger-ui.html) | UI disponible en entorno desplegado Render |
+| H2 Console (Local) | [http://localhost:8080/h2-console](http://localhost:8080/h2-console) | Requiere descomentar spring-boot-starter-web para habilitar acceso web |
 
 ## Matriz de trazabilidad del challenge
 
@@ -245,13 +259,26 @@ Esta dependencia se mantiene comentada porque levanta Tomcat (stack bloqueante),
 | Crear alumno de forma reactiva | Endpoint POST con WebFlux y caso de uso CreateStudentUseCase | API HTTP + pruebas de controller/use case |
 | Rechazar id duplicado | Validacion existsById + error funcional 409 | GlobalExceptionHandler + pruebas de conflicto |
 | Listar alumnos activos | Endpoint GET que filtra por estado ACTIVE | GetActiveStudentsUseCase + pruebas |
+| Control de errores no contemplados | Handler global con respuesta 500 estandarizada | GlobalExceptionHandler + pruebas de manejo de errores |
 | Persistencia en memoria | H2 + R2DBC + schema.sql | Configuracion + pruebas de repositorio |
 | Pruebas por capa | Tests de controller, use case, repository/adapter y filtro | build/reports/tests/test/index.html |
 | Calidad tecnica | JaCoCo, SpotBugs, SonarCloud y gate de cobertura | Reportes locales + SonarCloud |
 
 ## Coleccion Postman
 
-- Coleccion: [src/main/resources/P-SB.postman_collection.json](src/main/resources/P-SB.postman_collection.json)
+- Colección: [src/main/resources/P-SB.postman_collection.json](src/main/resources/P-SB.postman_collection.json)
+- Endpoints incluidos:
+  - Crear alumno (POST /v1/api/students)
+  - Listar alumnos activos (GET /v1/api/students/active)
+  - Health check health = (GET /actuator/health) , Info = (GET /actuator/info)
+- Variables:
+  - Base URL: (configurada para localhost y Render) 
+    - `{{8080}}`  = http://localhost:8080/
+    - `{{RenderDeploy}}` = https://psb-uka6.onrender.com/
+- Folders:
+  - Local = En local con base URL localhost.
+  - Deployed = En entorno Render con base URL deploy.
+- Idempotency-Key incluido en headers para trazabilidad de logs.
 
 ## Mapa de carpetas
 
@@ -393,6 +420,17 @@ Ejemplo de log de salida (OUT error):
 }
 ```
 
+Ejemplo de respuesta HTTP 500 controlada:
+
+```json
+{
+  "timestamp": "2026-03-17T21:45:12",
+  "status": 500,
+  "error": "Error interno",
+  "message": "Ocurrio un error inesperado. Intenta nuevamente o contacta al administrador."
+}
+```
+
 ## Convenciones funcionales clave
 
 - Estados permitidos para entrada: ACTIVE, INACTIVE.
@@ -410,7 +448,14 @@ gradlew.bat bootRun
 2. Crear alumno:
 
 ```bash
+# Local
 curl -X POST "http://localhost:8080/v1/api/students" \
+  -H "Content-Type: application/json" \
+  -H "Idempotency-Key: demo-001" \
+  -d "{\"id\":1,\"name\":\"Julian\",\"lastName\":\"Hurtado\",\"state\":\"ACTIVE\",\"age\":28}"
+
+# Deployed
+curl -X POST "https://psb-uka6.onrender.com/v1/api/students" \
   -H "Content-Type: application/json" \
   -H "Idempotency-Key: demo-001" \
   -d "{\"id\":1,\"name\":\"Julian\",\"lastName\":\"Hurtado\",\"state\":\"ACTIVE\",\"age\":28}"
@@ -419,7 +464,14 @@ curl -X POST "http://localhost:8080/v1/api/students" \
 3. Forzar duplicado para ver 409:
 
 ```bash
+# Local
 curl -X POST "http://localhost:8080/v1/api/students" \
+  -H "Content-Type: application/json" \
+  -H "Idempotency-Key: demo-002" \
+  -d "{\"id\":1,\"name\":\"Julian\",\"lastName\":\"Hurtado\",\"state\":\"ACTIVE\",\"age\":28}"
+
+# Deployed
+curl -X POST "https://psb-uka6.onrender.com/v1/api/students" \
   -H "Content-Type: application/json" \
   -H "Idempotency-Key: demo-002" \
   -d "{\"id\":1,\"name\":\"Julian\",\"lastName\":\"Hurtado\",\"state\":\"ACTIVE\",\"age\":28}"
@@ -428,19 +480,29 @@ curl -X POST "http://localhost:8080/v1/api/students" \
 4. Consultar activos:
 
 ```bash
+# Local
 curl "http://localhost:8080/v1/api/students/active" -H "Idempotency-Key: demo-003"
+
+# Deployed
+curl "https://psb-uka6.onrender.com/v1/api/students/active" -H "Idempotency-Key: demo-003"
 ```
 
 5. Verificar observabilidad con Actuator:
 
 ```bash
+# Local
 curl "http://localhost:8080/actuator/health"
 curl "http://localhost:8080/actuator/info"
+
+# Deployed
+curl "https://psb-uka6.onrender.com/actuator/health"
+curl "https://psb-uka6.onrender.com/actuator/info"
 ```
 
 6. Revisar Swagger, reportes y calidad:
 
-- http://localhost:8080/swagger-ui.html
+- Local Swagger: http://localhost:8080/swagger-ui.html
+- Deployed Swagger: https://psb-uka6.onrender.com/swagger-ui.html
 - build/reports/tests/test/index.html
 - build/reports/jacoco/test/html/index.html
 - build/reports/spotbugs/main.html

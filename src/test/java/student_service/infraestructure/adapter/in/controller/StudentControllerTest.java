@@ -173,6 +173,31 @@ class StudentControllerTest {
                 .expectStatus().isBadRequest()
                 .expectBody()
                 .jsonPath("$.status").isEqualTo(400)
-                .jsonPath("$.error").isEqualTo("Datos invalidos");
+                .jsonPath("$.error").isEqualTo("Datos inválidos");
+    }
+
+    @Test
+    @DisplayName("Debe responder 500 controlado cuando ocurre RuntimeException no contemplada")
+    void debeResponder500CuandoRuntimeExceptionNoControlada() {
+        when(createStudentUseCase.execute(any(Student.class)))
+                .thenReturn(Mono.error(new RuntimeException("Fallo inesperado")));
+
+        webTestClient.post().uri("/v1/api/students")
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue("""
+                        {
+                            "id": 1,
+                            "name": "Juan",
+                            "lastName": "Perez",
+                            "state": "ACTIVE",
+                            "age": 20
+                        }
+                        """)
+                .exchange()
+                .expectStatus().isEqualTo(500)
+                .expectBody()
+                .jsonPath("$.status").isEqualTo(500)
+                .jsonPath("$.error").isEqualTo("Error interno")
+                .jsonPath("$.message").isEqualTo("Error inesperado. Intenta nuevamente o contacta al administrador.");
     }
 }

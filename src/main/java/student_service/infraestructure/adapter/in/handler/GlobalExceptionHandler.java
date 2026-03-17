@@ -16,13 +16,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(StudentAlreadyExistsException.class)
     public ResponseEntity<ErrorResponse> handleStudentAlreadyExists(StudentAlreadyExistsException ex) {
-        ErrorResponse error = ErrorResponse.builder()
-                .timestamp(LocalDateTime.now())
-                .status(HttpStatus.CONFLICT.value())
-                .error("Conflicto")
-                .message(ex.getMessage())
-                .build();
-        return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
+        return buildResponse(HttpStatus.CONFLICT, "Conflicto",ex.getMessage(),null);
     }
 
     @ExceptionHandler(WebExchangeBindException.class)
@@ -30,24 +24,27 @@ public class GlobalExceptionHandler {
         List<String> details = ex.getFieldErrors().stream()
                 .map(fe -> fe.getField() + ": " + fe.getDefaultMessage())
                 .toList();
-        ErrorResponse error = ErrorResponse.builder()
-                .timestamp(LocalDateTime.now())
-                .status(HttpStatus.BAD_REQUEST.value())
-                .error("Error de validacion")
-                .message("Los datos del alumno no son validos.")
-                .details(details)
-                .build();
-        return ResponseEntity.badRequest().body(error);
+        return buildResponse(HttpStatus.BAD_REQUEST,"Error de validación","Los datos del alumno no son validos.",details);
     }
 
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<ErrorResponse> handleIllegalArgument(IllegalArgumentException ex) {
-        ErrorResponse error = ErrorResponse.builder()
+        return buildResponse(HttpStatus.BAD_REQUEST,"Datos inválidos",ex.getMessage(),null);
+    }
+
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<ErrorResponse> handleUnexpectedException(Exception ex) {
+        return buildResponse(HttpStatus.INTERNAL_SERVER_ERROR,"Error interno","Error inesperado. Intenta nuevamente o contacta al administrador.",null);
+    }
+
+    private ResponseEntity<ErrorResponse> buildResponse(HttpStatus status,String errorType,String message,List<String> details) {
+        ErrorResponse errorResponse = ErrorResponse.builder()
                 .timestamp(LocalDateTime.now())
-                .status(HttpStatus.BAD_REQUEST.value())
-                .error("Datos invalidos")
-                .message(ex.getMessage())
+                .status(status.value())
+                .error(errorType)
+                .message(message)
+                .details(details)
                 .build();
-        return ResponseEntity.badRequest().body(error);
+        return ResponseEntity.status(status).body(errorResponse);
     }
 }
