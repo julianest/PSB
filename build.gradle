@@ -226,11 +226,11 @@ check.dependsOn jacocoTestCoverageVerification
 */
 publishing {
 	publications {
-		bootJar(MavenPublication) {
+		studentService(MavenPublication) {
 			groupId = 'com.scotiabank.challenge'
 			artifactId = 'student-service'
 			version = project.version
-			artifact(bootJar)
+			artifact(tasks.named('bootJar'))
 		}
 	}
 	repositories {
