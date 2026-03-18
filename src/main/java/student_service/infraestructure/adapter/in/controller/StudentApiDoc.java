@@ -6,6 +6,7 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.RequestMapping;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -14,7 +15,7 @@ import student_service.infraestructure.adapter.in.dto.ErrorResponse;
 import student_service.infraestructure.adapter.in.dto.SavedResponse;
 import student_service.infraestructure.adapter.in.dto.StudentResponse;
 
-@RequestMapping("v1/api/students")
+@RequestMapping(value = "v1/api/students", produces = MediaType.APPLICATION_JSON_VALUE)
 @Tag(name = "Students", description = "Endpoints para gestión de alumnos")
 public interface StudentApiDoc {
     @Operation(
@@ -22,13 +23,13 @@ public interface StudentApiDoc {
             description = "Registra un nuevo alumno validando consistencia de datos y unicidad del id."
     )
     @ApiResponse(responseCode = "201", description = "Alumno creado exitosamente",
-            content = @Content(schema = @Schema(implementation = SavedResponse.class)))
+            content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = SavedResponse.class)))
     @ApiResponse(responseCode = "400", description = "Datos inválidos",
-            content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+            content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = ErrorResponse.class)))
     @ApiResponse(responseCode = "409", description = "El id del alumno ya existe",
-            content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+            content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = ErrorResponse.class)))
     @ApiResponse(responseCode = "500", description = "Error interno no controlado",
-            content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+            content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = ErrorResponse.class)))
     Mono<SavedResponse> createStudent(CreateStudentRequest request);
 
 
@@ -37,8 +38,8 @@ public interface StudentApiDoc {
             description = "Retorna todos los alumnos con estado ACTIVE."
     )
     @ApiResponse(responseCode = "200", description = "Lista de alumnos activos",
-            content = @Content(array = @ArraySchema(schema = @Schema(implementation = StudentResponse.class))))
+            content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, array = @ArraySchema(schema = @Schema(implementation = StudentResponse.class))))
     @ApiResponse(responseCode = "500", description = "Error interno no controlado",
-            content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+            content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = ErrorResponse.class)))
     Flux<StudentResponse> getActiveStudents();
 }

@@ -19,7 +19,7 @@ Microservicio backend reactivo para el reto Scotiabank Reactive Challenge.
 - Spring Data R2DBC
 - H2 en memoria (R2DBC + JDBC para consola)
 - Bean Validation
-- Spring Boot Actuator (health/info)
+- Spring Boot Actuator (health)
 - OpenAPI/Swagger con springdoc-openapi-starter-webflux-ui 2.7.0
 - MapStruct + Lombok
 
@@ -61,10 +61,6 @@ Endpoints de observabilidad (Actuator):
   - Verifica estado de salud del servicio (healthcheck de runtime/CI).
   - Respuesta esperada: 200.
 
-- GET /actuator/info
-  - Expone informacion general del servicio.
-  - Respuesta esperada: 200.
-
 ### Resumen de endpoints
 
 | Metodo | Endpoint | Descripcion | Respuestas |
@@ -72,7 +68,6 @@ Endpoints de observabilidad (Actuator):
 | POST | /v1/api/students | Crea alumno con validaciones y control de id duplicado | 201, 400, 409, 500 |
 | GET | /v1/api/students/active | Lista alumnos activos | 200, 500 |
 | GET | /actuator/health | Estado de salud del servicio para monitoreo/healthcheck | 200 |
-| GET | /actuator/info | Informacion general del servicio | 200 |
 
 ## Persistencia y configuracion
 
@@ -217,20 +212,20 @@ gradlew.bat publish
 ![Sonar Analisis](src/main/resources/Sonar_Analisis.png)
 #### Artifact CI- Package Maven
 ![Artifact](src/main/resources/Artifact.png)
+#### Render Deploy
+![Render](src/main/resources/Render.png)
 
-### Consolas y documentacion runtime
+### Consolas y documentación runtime
 
 - Local:
   - Swagger UI: [http://localhost:8080/swagger-ui.html](http://localhost:8080/swagger-ui.html)
   - OpenAPI JSON: [http://localhost:8080/v3/api-docs](http://localhost:8080/v3/api-docs)
   - Healthcheck: [http://localhost:8080/actuator/health](http://localhost:8080/actuator/health)
-  - Info: [http://localhost:8080/actuator/info](http://localhost:8080/actuator/info)
   - H2 Console: [http://localhost:8080/h2-console](http://localhost:8080/h2-console)
 - Deployed (Render):
   - Swagger UI: [https://psb-uka6.onrender.com/swagger-ui.html](https://psb-uka6.onrender.com/swagger-ui.html)
   - OpenAPI JSON: [https://psb-uka6.onrender.com/v3/api-docs](https://psb-uka6.onrender.com/v3/api-docs)
   - Healthcheck: [https://psb-uka6.onrender.com/actuator/health](https://psb-uka6.onrender.com/actuator/health)
-  - Info: [https://psb-uka6.onrender.com/actuator/info](https://psb-uka6.onrender.com/actuator/info)
 
 ### Nota importante para H2 Console
 
@@ -270,7 +265,7 @@ Esta dependencia se mantiene comentada porque levanta Tomcat (stack bloqueante),
 - Endpoints incluidos:
   - Crear alumno (POST /v1/api/students)
   - Listar alumnos activos (GET /v1/api/students/active)
-  - Health check health = (GET /actuator/health) , Info = (GET /actuator/info)
+  - Health check health = (GET /actuator/health)
 - Variables:
   - Base URL: (configurada para localhost y Render) 
     - `{{8080}}`  = http://localhost:8080/
@@ -492,11 +487,9 @@ curl "https://psb-uka6.onrender.com/v1/api/students/active" -H "Idempotency-Key:
 ```bash
 # Local
 curl "http://localhost:8080/actuator/health"
-curl "http://localhost:8080/actuator/info"
 
 # Deployed
 curl "https://psb-uka6.onrender.com/actuator/health"
-curl "https://psb-uka6.onrender.com/actuator/info"
 ```
 
 6. Revisar Swagger, reportes y calidad:

@@ -3,6 +3,7 @@ package student_service.infraestructure.adapter.in.controller;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -26,7 +27,7 @@ public class StudentController implements StudentApiDoc {
     private final StudentDtoMapper studentDtoMapper;
 
     @Override
-    @PostMapping
+    @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseStatus(HttpStatus.CREATED)
     public Mono<SavedResponse> createStudent(@Valid @RequestBody CreateStudentRequest request) {
         return createStudentUseCase.execute(studentDtoMapper.toDomain(request))
@@ -37,7 +38,7 @@ public class StudentController implements StudentApiDoc {
     }
 
     @Override
-    @GetMapping("/active")
+    @GetMapping(value = "/active", produces = MediaType.APPLICATION_JSON_VALUE)
     public Flux<StudentResponse> getActiveStudents() {
         return getActiveStudentsUseCase.execute()
                 .map(studentDtoMapper::toResponse);
