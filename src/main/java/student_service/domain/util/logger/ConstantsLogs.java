@@ -11,7 +11,6 @@ public final class ConstantsLogs {
     public static final String OUT = "OUT";
     public static final String SUCCESS = "SUCCESS";
     public static final String ERROR = "ERROR";
-    public static final String UNKNOWN_ERROR = "Unknown Error";
 
     //Operation
 

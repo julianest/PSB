@@ -7,62 +7,200 @@
   },
   "item": [
     {
-      "name": "Save-Students",
-      "request": {
-        "method": "POST",
-        "header": [
-          {
-            "key": "Idempotency-Key",
-            "value": "{{$guid}}",
-            "type": "text"
-          }
-        ],
-        "body": {
-          "mode": "raw",
-          "raw": "{\r\n  \"id\": 1,\r\n  \"name\": \"Julian\",\r\n  \"lastName\": \"Hurtado\",\r\n  \"state\": \"ACTIVE\",\r\n  \"age\": 28\r\n}",
-          "options": {
-            "raw": {
-              "language": "json"
+      "name": "Local",
+      "item": [
+        {
+          "name": "Save_Students",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Idempotency-Key",
+                "value": "{{$guid}}",
+                "type": "text"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"id\": 1,\r\n  \"name\": \"Julian\",\r\n  \"lastName\": \"Hurtado\",\r\n  \"state\": \"ACTIVE\",\r\n  \"age\": 28\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{8080}}v1/api/students",
+              "host": [
+                "{{8080}}v1"
+              ],
+              "path": [
+                "api",
+                "students"
+              ]
             }
-          }
+          },
+          "response": []
         },
-        "url": {
-          "raw": "{{8080}}v1/api/students",
-          "host": [
-            "{{8080}}v1"
-          ],
-          "path": [
-            "api",
-            "students"
-          ]
+        {
+          "name": "Get_Students",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Idempotency-Key",
+                "value": "{{$guid}}",
+                "type": "text"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{8080}}v1/api/students/active",
+              "host": [
+                "{{8080}}v1"
+              ],
+              "path": [
+                "api",
+                "students",
+                "active"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Health_Check",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Idempotency-Key",
+                "value": "{{$guid}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{8080}}actuator/health",
+              "host": [
+                "{{8080}}actuator"
+              ],
+              "path": [
+                "health"
+              ]
+            }
+          },
+          "response": []
         }
-      },
-      "response": []
+      ]
     },
     {
-      "name": "Get-Students",
-      "request": {
-        "method": "GET",
-        "header": [
-          {
-            "key": "Idempotency-Key",
-            "value": "{{$guid}}",
-            "type": "text"
-          }
-        ],
-        "url": {
-          "raw": "{{8080}}v1/api/students/active",
-          "host": [
-            "{{8080}}v1"
-          ],
-          "path": [
-            "api",
-            "students",
-            "active"
-          ]
+      "name": "Deployed",
+      "item": [
+        {
+          "name": "Save_Students",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Idempotency-Key",
+                "value": "{{$guid}}",
+                "type": "text"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"id\": 1,\r\n  \"name\": \"Julian\",\r\n  \"lastName\": \"Hurtado\",\r\n  \"state\": \"ACTIVE\",\r\n  \"age\": 28\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{RenderDeploy}}v1/api/students",
+              "host": [
+                "{{RenderDeploy}}v1"
+              ],
+              "path": [
+                "api",
+                "students"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get_Students",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Idempotency-Key",
+                "value": "{{$guid}}",
+                "type": "text"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{RenderDeploy}}v1/api/students/active",
+              "host": [
+                "{{RenderDeploy}}v1"
+              ],
+              "path": [
+                "api",
+                "students",
+                "active"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Health_Check",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Idempotency-Key",
+                "value": "{{$guid}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "https://psb-uka6.onrender.com/actuator/health",
+              "protocol": "https",
+              "host": [
+                "psb-uka6",
+                "onrender",
+                "com"
+              ],
+              "path": [
+                "actuator",
+                "health"
+              ]
+            }
+          },
+          "response": []
         }
-      },
-      "response": []
+      ]
     }
   ]
 }

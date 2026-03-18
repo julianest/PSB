@@ -2,6 +2,7 @@ package student_service.application.usecase;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import reactor.core.publisher.Mono;
 import student_service.domain.exception.StudentAlreadyExistsException;
 import student_service.domain.model.Student;
@@ -13,6 +14,7 @@ public class CreateStudentUseCase {
 
     private final StudentRepository studentRepository;
 
+    @Transactional
     public Mono<Student> execute(Student student) {
         return studentRepository.existsById(student.id())
                 .flatMap(exists -> {
