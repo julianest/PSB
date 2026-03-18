@@ -35,10 +35,3 @@ out/
 
 ### VS Code ###
 .vscode/
-
-### Copilot ###
-.github/agents
-.github/instructions
-
-### docs ###
-docs/
